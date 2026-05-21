@@ -1,33 +1,59 @@
 import { App, Notice } from "obsidian";
 import { PresetManager } from "./preset-manager";
 
-const INJECTED_ATTR = "data-graph-presets-injected";
+const PANEL_ID = "graph-presets-panel";
 
 export class HeaderUI {
   static inject(_app: App, presetManager: PresetManager): void {
     requestAnimationFrame(() => {
-      const controls = document.querySelector(".graph-controls");
-      if (!controls) return;
-      if (controls.hasAttribute(INJECTED_ATTR)) return;
-      controls.setAttribute(INJECTED_ATTR, "true");
+      const graphContainer = document.querySelector(".graph-view-content, .mod-graph");
+      if (!graphContainer) return;
+      if (document.getElementById(PANEL_ID)) return;
 
-      const row = controls.createEl("div", { cls: "graph-presets-header-row" });
-      row.style.cssText = "display:flex;align-items:center;gap:6px;margin-left:8px";
+      // Floating panel container (bottom-left)
+      const panel = document.createElement("div");
+      panel.id = PANEL_ID;
+      panel.style.cssText = `
+        position:absolute; bottom:12px; left:12px; z-index:10;
+        background:var(--background-primary); border:1px solid var(--background-modifier-border);
+        border-radius:8px; padding:6px 8px; font-size:12px;
+        box-shadow:0 2px 8px rgba(0,0,0,0.15); min-width:180px;
+      `;
+      graphContainer.appendChild(panel);
 
-      // Preset dropdown
-      const select = row.createEl("select", { cls: "graph-presets-select dropdown" });
-      select.style.maxWidth = "180px";
+      // Toggle button (collapsed state)
+      const toggleBtn = panel.createEl("button", {
+        text: "📁 Presets",
+        cls: "graph-presets-toggle",
+      });
+      toggleBtn.style.cssText = "font-size:12px;width:100%;cursor:pointer;";
 
-      // Save button
-      const saveBtn = row.createEl("button", { text: "Save", cls: "graph-presets-save-btn" });
-      saveBtn.style.fontSize = "12px";
+      // Body (shown when expanded)
+      const body = panel.createEl("div", { cls: "graph-presets-body" });
+      body.style.display = "none";
 
-      // Delete button
-      const delBtn = row.createEl("button", { text: "Del", cls: "graph-presets-del-btn" });
-      delBtn.style.cssText = "font-size:12px;color:var(--text-error)";
+      // Dropdown
+      const select = body.createEl("select", { cls: "dropdown" });
+      select.style.cssText = "width:100%;margin-bottom:4px;";
+
+      // Buttons row
+      const btnRow = body.createEl("div");
+      btnRow.style.cssText = "display:flex;gap:4px;";
+
+      const saveBtn = btnRow.createEl("button", { text: "Save" });
+      saveBtn.style.cssText = "font-size:11px;flex:1;";
+      const delBtn = btnRow.createEl("button", { text: "Del" });
+      delBtn.style.cssText = "font-size:11px;flex:1;color:var(--text-error);";
+
+      let expanded = false;
+      toggleBtn.addEventListener("click", () => {
+        expanded = !expanded;
+        body.style.display = expanded ? "block" : "none";
+        toggleBtn.textContent = expanded ? "📁 Presets ▲" : "📁 Presets";
+        if (expanded) HeaderUI.refreshDropdown(select, presetManager);
+      });
 
       // --- Events ---
-
       select.addEventListener("change", async () => {
         const id = (select as HTMLSelectElement).value;
         if (!id) return;
@@ -38,43 +64,39 @@ export class HeaderUI {
       });
 
       saveBtn.addEventListener("click", () => {
-        const input = row.createEl("input", {
-          type: "text", placeholder: "Preset name...", cls: "graph-presets-name-input",
+        const input = body.createEl("input", {
+          type: "text", placeholder: "name...",
         });
-        input.style.cssText = "font-size:12px;width:120px";
-        saveBtn.style.display = "none";
+        input.style.cssText = "width:100%;margin-bottom:4px;font-size:12px;";
+        saveBtn.style.display = "none"; delBtn.style.display = "none";
 
         const doSave = async () => {
           const name = input.value.trim();
           input.remove();
-          saveBtn.style.display = "";
+          saveBtn.style.display = ""; delBtn.style.display = "";
           if (!name) return;
           try {
             await presetManager.saveCurrent(name);
             HeaderUI.refreshDropdown(select, presetManager);
           } catch (e: any) { new Notice(e.message); }
         };
-
         input.addEventListener("keydown", (e) => {
           if (e.key === "Enter") doSave();
-          if (e.key === "Escape") { input.remove(); saveBtn.style.display = ""; }
+          if (e.key === "Escape") { input.remove(); saveBtn.style.display = ""; delBtn.style.display = ""; }
         });
-        input.addEventListener("blur", () => doSave());
         input.focus();
       });
 
       delBtn.addEventListener("click", async () => {
         const id = (select as HTMLSelectElement).value;
         if (!id) { new Notice("No preset selected"); return; }
-        const preset = presetManager.list().find(p => p.id === id);
-        if (!preset) return;
-        if (confirm(`Delete "${preset.name}"?`)) {
+        const p = presetManager.list().find((p) => p.id === id);
+        if (!p) return;
+        if (confirm(`Delete "${p.name}"?`)) {
           await presetManager.delete(id);
           HeaderUI.refreshDropdown(select, presetManager);
         }
       });
-
-      HeaderUI.refreshDropdown(select, presetManager);
     });
   }
 
@@ -82,16 +104,11 @@ export class HeaderUI {
     const presets = mgr.list();
     const activeId = mgr.activePresetId;
     select.innerHTML = "";
-
     if (presets.length === 0) {
       const opt = select.createEl("option", { value: "", text: "No presets" });
-      opt.disabled = true;
-      opt.selected = true;
-      select.disabled = true;
+      opt.disabled = true; opt.selected = true;
       return;
     }
-
-    select.disabled = false;
     presets.forEach((p) => {
       const opt = select.createEl("option", { value: p.id, text: p.name });
       if (p.id === activeId) opt.selected = true;
