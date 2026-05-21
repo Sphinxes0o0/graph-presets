@@ -4,11 +4,12 @@ import { PresetManager } from "./preset-manager";
 const PANEL_ID = "graph-presets-panel";
 
 export class HeaderUI {
-  static inject(_app: App, presetManager: PresetManager): void {
+  static inject(app: App, presetManager: PresetManager): void {
     requestAnimationFrame(() => {
-      const graphContainer = document.querySelector(".graph-view-content, .mod-graph");
-      if (!graphContainer) return;
-      if (document.getElementById(PANEL_ID)) return;
+      const leaf = app.workspace.getLeavesOfType("graph")[0];
+      if (!leaf) return;
+      const graphContainer = leaf.view.containerEl as HTMLElement;
+      if (!graphContainer || document.getElementById(PANEL_ID)) return;
 
       // Floating panel container (bottom-left)
       const panel = document.createElement("div");
