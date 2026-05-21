@@ -49,14 +49,35 @@ export class HeaderUI {
 
       // Event: save preset
       saveBtn.addEventListener("click", async () => {
-        const name = window.prompt("Preset name:");
-        if (!name) return;
-        try {
-          await presetManager.saveCurrent(name);
-          HeaderUI.refreshDropdown(select, presetManager);
-        } catch (e: any) {
-          new Notice(e.message);
-        }
+        // Replace button with inline name input
+        const input = row.createEl("input", {
+          type: "text",
+          placeholder: "Preset name...",
+          cls: "graph-presets-name-input",
+        });
+        input.style.fontSize = "12px";
+        input.style.width = "120px";
+        saveBtn.style.display = "none";
+
+        const doSave = async () => {
+          const name = input.value.trim();
+          input.remove();
+          saveBtn.style.display = "";
+          if (!name) return;
+          try {
+            await presetManager.saveCurrent(name);
+            HeaderUI.refreshDropdown(select, presetManager);
+          } catch (e: any) {
+            new Notice(e.message);
+          }
+        };
+
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") doSave();
+          if (e.key === "Escape") { input.remove(); saveBtn.style.display = ""; }
+        });
+        input.addEventListener("blur", () => doSave());
+        input.focus();
       });
 
       // Initial population

@@ -309,15 +309,37 @@ var HeaderUI = class _HeaderUI {
         }
       });
       saveBtn.addEventListener("click", async () => {
-        const name = window.prompt("Preset name:");
-        if (!name)
-          return;
-        try {
-          await presetManager.saveCurrent(name);
-          _HeaderUI.refreshDropdown(select, presetManager);
-        } catch (e) {
-          new import_obsidian4.Notice(e.message);
-        }
+        const input = row.createEl("input", {
+          type: "text",
+          placeholder: "Preset name...",
+          cls: "graph-presets-name-input"
+        });
+        input.style.fontSize = "12px";
+        input.style.width = "120px";
+        saveBtn.style.display = "none";
+        const doSave = async () => {
+          const name = input.value.trim();
+          input.remove();
+          saveBtn.style.display = "";
+          if (!name)
+            return;
+          try {
+            await presetManager.saveCurrent(name);
+            _HeaderUI.refreshDropdown(select, presetManager);
+          } catch (e) {
+            new import_obsidian4.Notice(e.message);
+          }
+        };
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter")
+            doSave();
+          if (e.key === "Escape") {
+            input.remove();
+            saveBtn.style.display = "";
+          }
+        });
+        input.addEventListener("blur", () => doSave());
+        input.focus();
       });
       _HeaderUI.refreshDropdown(select, presetManager);
     });
