@@ -282,21 +282,14 @@ var HeaderUI = class _HeaderUI {
       if (controls.hasAttribute(INJECTED_ATTR))
         return;
       controls.setAttribute(INJECTED_ATTR, "true");
-      const row = controls.createEl("div", {
-        cls: "graph-presets-header-row"
-      });
-      row.style.display = "flex";
-      row.style.alignItems = "center";
-      row.style.gap = "6px";
-      const select = row.createEl("select", {
-        cls: "graph-presets-select dropdown"
-      });
-      select.style.maxWidth = "200px";
-      const saveBtn = row.createEl("button", {
-        text: "Save",
-        cls: "graph-presets-save-btn"
-      });
+      const row = controls.createEl("div", { cls: "graph-presets-header-row" });
+      row.style.cssText = "display:flex;align-items:center;gap:6px;margin-left:8px";
+      const select = row.createEl("select", { cls: "graph-presets-select dropdown" });
+      select.style.maxWidth = "180px";
+      const saveBtn = row.createEl("button", { text: "Save", cls: "graph-presets-save-btn" });
       saveBtn.style.fontSize = "12px";
+      const delBtn = row.createEl("button", { text: "Del", cls: "graph-presets-del-btn" });
+      delBtn.style.cssText = "font-size:12px;color:var(--text-error)";
       select.addEventListener("change", async () => {
         const id = select.value;
         if (!id)
@@ -308,14 +301,13 @@ var HeaderUI = class _HeaderUI {
           new import_obsidian4.Notice(e.message);
         }
       });
-      saveBtn.addEventListener("click", async () => {
+      saveBtn.addEventListener("click", () => {
         const input = row.createEl("input", {
           type: "text",
           placeholder: "Preset name...",
           cls: "graph-presets-name-input"
         });
-        input.style.fontSize = "12px";
-        input.style.width = "120px";
+        input.style.cssText = "font-size:12px;width:120px";
         saveBtn.style.display = "none";
         const doSave = async () => {
           const name = input.value.trim();
@@ -341,6 +333,20 @@ var HeaderUI = class _HeaderUI {
         input.addEventListener("blur", () => doSave());
         input.focus();
       });
+      delBtn.addEventListener("click", async () => {
+        const id = select.value;
+        if (!id) {
+          new import_obsidian4.Notice("No preset selected");
+          return;
+        }
+        const preset = presetManager.list().find((p) => p.id === id);
+        if (!preset)
+          return;
+        if (confirm(`Delete "${preset.name}"?`)) {
+          await presetManager.delete(id);
+          _HeaderUI.refreshDropdown(select, presetManager);
+        }
+      });
       _HeaderUI.refreshDropdown(select, presetManager);
     });
   }
@@ -357,14 +363,9 @@ var HeaderUI = class _HeaderUI {
     }
     select.disabled = false;
     presets.forEach((p) => {
-      const filterPreview = p.options.search ? `"${p.options.search}"` : "(all)";
-      const opt = select.createEl("option", {
-        value: p.id,
-        text: `${p.name} \u2014 ${filterPreview}`
-      });
-      if (p.id === activeId) {
+      const opt = select.createEl("option", { value: p.id, text: p.name });
+      if (p.id === activeId)
         opt.selected = true;
-      }
     });
   }
 };

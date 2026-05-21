@@ -6,57 +6,42 @@ const INJECTED_ATTR = "data-graph-presets-injected";
 export class HeaderUI {
   static inject(_app: App, presetManager: PresetManager): void {
     requestAnimationFrame(() => {
-      // Find the graph controls bar (toolbar above the graph canvas)
       const controls = document.querySelector(".graph-controls");
       if (!controls) return;
-
-      // Avoid double-injection
       if (controls.hasAttribute(INJECTED_ATTR)) return;
       controls.setAttribute(INJECTED_ATTR, "true");
 
-      // Build the preset selector + save button row
-      const row = controls.createEl("div", {
-        cls: "graph-presets-header-row",
-      });
-      row.style.display = "flex";
-      row.style.alignItems = "center";
-      row.style.gap = "6px";
+      const row = controls.createEl("div", { cls: "graph-presets-header-row" });
+      row.style.cssText = "display:flex;align-items:center;gap:6px;margin-left:8px";
 
       // Preset dropdown
-      const select = row.createEl("select", {
-        cls: "graph-presets-select dropdown",
-      });
-      select.style.maxWidth = "200px";
+      const select = row.createEl("select", { cls: "graph-presets-select dropdown" });
+      select.style.maxWidth = "180px";
 
       // Save button
-      const saveBtn = row.createEl("button", {
-        text: "Save",
-        cls: "graph-presets-save-btn",
-      });
+      const saveBtn = row.createEl("button", { text: "Save", cls: "graph-presets-save-btn" });
       saveBtn.style.fontSize = "12px";
 
-      // Event: change preset
+      // Delete button
+      const delBtn = row.createEl("button", { text: "Del", cls: "graph-presets-del-btn" });
+      delBtn.style.cssText = "font-size:12px;color:var(--text-error)";
+
+      // --- Events ---
+
       select.addEventListener("change", async () => {
         const id = (select as HTMLSelectElement).value;
         if (!id) return;
         try {
           await presetManager.activate(id);
           HeaderUI.refreshDropdown(select, presetManager);
-        } catch (e: any) {
-          new Notice(e.message);
-        }
+        } catch (e: any) { new Notice(e.message); }
       });
 
-      // Event: save preset
-      saveBtn.addEventListener("click", async () => {
-        // Replace button with inline name input
+      saveBtn.addEventListener("click", () => {
         const input = row.createEl("input", {
-          type: "text",
-          placeholder: "Preset name...",
-          cls: "graph-presets-name-input",
+          type: "text", placeholder: "Preset name...", cls: "graph-presets-name-input",
         });
-        input.style.fontSize = "12px";
-        input.style.width = "120px";
+        input.style.cssText = "font-size:12px;width:120px";
         saveBtn.style.display = "none";
 
         const doSave = async () => {
@@ -67,9 +52,7 @@ export class HeaderUI {
           try {
             await presetManager.saveCurrent(name);
             HeaderUI.refreshDropdown(select, presetManager);
-          } catch (e: any) {
-            new Notice(e.message);
-          }
+          } catch (e: any) { new Notice(e.message); }
         };
 
         input.addEventListener("keydown", (e) => {
@@ -80,7 +63,17 @@ export class HeaderUI {
         input.focus();
       });
 
-      // Initial population
+      delBtn.addEventListener("click", async () => {
+        const id = (select as HTMLSelectElement).value;
+        if (!id) { new Notice("No preset selected"); return; }
+        const preset = presetManager.list().find(p => p.id === id);
+        if (!preset) return;
+        if (confirm(`Delete "${preset.name}"?`)) {
+          await presetManager.delete(id);
+          HeaderUI.refreshDropdown(select, presetManager);
+        }
+      });
+
       HeaderUI.refreshDropdown(select, presetManager);
     });
   }
@@ -88,7 +81,6 @@ export class HeaderUI {
   private static refreshDropdown(select: HTMLSelectElement, mgr: PresetManager): void {
     const presets = mgr.list();
     const activeId = mgr.activePresetId;
-
     select.innerHTML = "";
 
     if (presets.length === 0) {
@@ -101,16 +93,8 @@ export class HeaderUI {
 
     select.disabled = false;
     presets.forEach((p) => {
-      const filterPreview = p.options.search
-        ? `"${p.options.search}"`
-        : "(all)";
-      const opt = select.createEl("option", {
-        value: p.id,
-        text: `${p.name} \u2014 ${filterPreview}`,
-      });
-      if (p.id === activeId) {
-        opt.selected = true;
-      }
+      const opt = select.createEl("option", { value: p.id, text: p.name });
+      if (p.id === activeId) opt.selected = true;
     });
   }
 }
