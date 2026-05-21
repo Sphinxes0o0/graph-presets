@@ -211,62 +211,33 @@ var GraphPresetsSettingTab = class extends import_obsidian3.PluginSettingTab {
     const presets = this.mgr.list();
     if (presets.length === 0) {
       containerEl.createEl("p", {
-        text: "No presets yet. Open a Graph View, set up filters/colors, then save.",
+        text: "No presets yet. Open a Graph View, set up filters/colors, then click \u{1F4C1} Presets \u2192 Save.",
         cls: "setting-item-description"
       });
     } else {
-      containerEl.createEl("h3", { text: "Saved Presets" });
-      presets.forEach((preset) => this.renderPresetRow(containerEl, preset));
+      containerEl.createEl("p", {
+        text: `${presets.length} preset(s). Activate them from the Graph View panel.`,
+        cls: "setting-item-description"
+      });
+      presets.forEach((preset) => this.renderRow(containerEl, preset));
     }
-    containerEl.createEl("h3", { text: "Actions" });
-    new import_obsidian3.Setting(containerEl).setName("Save current Graph View").setDesc("Capture the active Graph View's filter, color groups, and node positions").addButton(
-      (btn) => btn.setButtonText("Save as Preset").setClass("mod-cta").onClick(() => this.promptSave())
-    );
-    const activePreset = presets.find((p) => p.id === this.mgr.activePresetId);
-    if (activePreset) {
-      new import_obsidian3.Setting(containerEl).setName(`Update "${activePreset.name}"`).setDesc("Overwrite active preset with current Graph View state").addButton(
-        (btn) => btn.setButtonText("Update").onClick(async () => {
-          await this.mgr.updateCurrent(activePreset.id);
-          this.display();
-        })
-      );
-    }
-    containerEl.createEl("h3", { text: "Settings" });
-    new import_obsidian3.Setting(containerEl).setName("Restore on startup").setDesc("Automatically restore last active preset when opening Obsidian").addToggle(
-      (toggle) => toggle.setValue(this.plugin.settings.restoreOnStartup).onChange(async (value) => {
-        this.plugin.settings.restoreOnStartup = value;
-        await this.plugin.saveData(this.plugin.settings);
-      })
-    );
   }
-  renderPresetRow(containerEl, preset) {
-    const isActive = this.mgr.activePresetId === preset.id;
-    new import_obsidian3.Setting(containerEl).setName(isActive ? `\u2605 ${preset.name}` : preset.name).setDesc(
-      `Filter: ${preset.options.search || "(none)"} \xB7 ${preset.options.colorGroups?.length ?? 0} color groups \xB7 ${preset.updatedAt.slice(0, 10)}`
-    ).addButton(
-      (btn) => btn.setButtonText(isActive ? "Active" : "Activate").setClass(isActive ? "mod-cta" : "").onClick(async () => {
-        await this.mgr.activate(preset.id);
-        this.display();
+  renderRow(containerEl, preset) {
+    const filter = preset.options.search || "(all)";
+    const colors = preset.options.colorGroups?.length ?? 0;
+    new import_obsidian3.Setting(containerEl).setName(preset.name).setDesc(`Filter: ${filter} \xB7 ${colors} color groups \xB7 ${preset.updatedAt.slice(0, 10)}`).addExtraButton(
+      (btn) => btn.setIcon("pencil").setTooltip("Rename").onClick(() => {
+        const newName = window.prompt("New name:", preset.name);
+        if (newName && newName !== preset.name) {
+          this.mgr.rename(preset.id, newName).then(() => this.display());
+        }
       })
-    ).addExtraButton(
-      (btn) => btn.setIcon("pencil").setTooltip("Rename").onClick(() => this.promptRename(preset))
     ).addExtraButton(
       (btn) => btn.setIcon("trash").setTooltip("Delete").onClick(async () => {
         await this.mgr.delete(preset.id);
         this.display();
       })
     );
-  }
-  promptSave() {
-    const name = window.prompt("Preset name:");
-    if (name)
-      this.mgr.saveCurrent(name).then(() => this.display());
-  }
-  promptRename(preset) {
-    const newName = window.prompt("New name:", preset.name);
-    if (newName && newName !== preset.name) {
-      this.mgr.rename(preset.id, newName).then(() => this.display());
-    }
   }
 };
 

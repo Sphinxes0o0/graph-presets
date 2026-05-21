@@ -24,95 +24,39 @@ export class GraphPresetsSettingTab extends PluginSettingTab {
 
     const presets = this.mgr.list();
 
-    // --- Preset List ---
     if (presets.length === 0) {
       containerEl.createEl("p", {
-        text: "No presets yet. Open a Graph View, set up filters/colors, then save.",
+        text: "No presets yet. Open a Graph View, set up filters/colors, then click 📁 Presets → Save.",
         cls: "setting-item-description",
       });
     } else {
-      containerEl.createEl("h3", { text: "Saved Presets" });
-      presets.forEach((preset) => this.renderPresetRow(containerEl, preset));
+      containerEl.createEl("p", {
+        text: `${presets.length} preset(s). Activate them from the Graph View panel.`,
+        cls: "setting-item-description",
+      });
+      presets.forEach((preset) => this.renderRow(containerEl, preset));
     }
+  }
 
-    // --- Actions ---
-    containerEl.createEl("h3", { text: "Actions" });
-
+  private renderRow(containerEl: HTMLElement, preset: Preset): void {
+    const filter = preset.options.search || "(all)";
+    const colors = preset.options.colorGroups?.length ?? 0;
     new Setting(containerEl)
-      .setName("Save current Graph View")
-      .setDesc("Capture the active Graph View's filter, color groups, and node positions")
-      .addButton((btn) =>
-        btn.setButtonText("Save as Preset").setClass("mod-cta").onClick(() => this.promptSave())
-      );
-
-    const activePreset = presets.find((p) => p.id === this.mgr.activePresetId);
-    if (activePreset) {
-      new Setting(containerEl)
-        .setName(`Update "${activePreset.name}"`)
-        .setDesc("Overwrite active preset with current Graph View state")
-        .addButton((btn) =>
-          btn.setButtonText("Update").onClick(async () => {
-            await this.mgr.updateCurrent(activePreset.id);
-            this.display();
-          })
-        );
-    }
-
-    // --- Settings ---
-    containerEl.createEl("h3", { text: "Settings" });
-
-    new Setting(containerEl)
-      .setName("Restore on startup")
-      .setDesc("Automatically restore last active preset when opening Obsidian")
-      .addToggle((toggle) =>
-        toggle.setValue(this.plugin.settings.restoreOnStartup).onChange(async (value) => {
-          this.plugin.settings.restoreOnStartup = value;
-          await this.plugin.saveData(this.plugin.settings);
+      .setName(preset.name)
+      .setDesc(`Filter: ${filter} · ${colors} color groups · ${preset.updatedAt.slice(0, 10)}`)
+      .addExtraButton((btn) =>
+        btn.setIcon("pencil").setTooltip("Rename").onClick(() => {
+          const newName = window.prompt("New name:", preset.name);
+          if (newName && newName !== preset.name) {
+            this.mgr.rename(preset.id, newName).then(() => this.display());
+          }
+        })
+      )
+      .addExtraButton((btn) =>
+        btn.setIcon("trash").setTooltip("Delete").onClick(async () => {
+          await this.mgr.delete(preset.id);
+          this.display();
         })
       );
-  }
-
-  private renderPresetRow(containerEl: HTMLElement, preset: Preset): void {
-    const isActive = this.mgr.activePresetId === preset.id;
-    new Setting(containerEl)
-      .setName(isActive ? `★ ${preset.name}` : preset.name)
-      .setDesc(
-        `Filter: ${preset.options.search || "(none)"} · ` +
-        `${preset.options.colorGroups?.length ?? 0} color groups · ` +
-        `${preset.updatedAt.slice(0, 10)}`
-      )
-      .addButton((btn) =>
-        btn
-          .setButtonText(isActive ? "Active" : "Activate")
-          .setClass(isActive ? "mod-cta" : "")
-          .onClick(async () => {
-            await this.mgr.activate(preset.id);
-            this.display();
-          })
-      )
-      .addExtraButton((btn) =>
-        btn.setIcon("pencil").setTooltip("Rename").onClick(() => this.promptRename(preset))
-      )
-      .addExtraButton((btn) =>
-        btn
-          .setIcon("trash")
-          .setTooltip("Delete")
-          .onClick(async () => {
-            await this.mgr.delete(preset.id);
-            this.display();
-          })
-      );
-  }
-
-  private promptSave(): void {
-    const name = window.prompt("Preset name:");
-    if (name) this.mgr.saveCurrent(name).then(() => this.display());
-  }
-
-  private promptRename(preset: Preset): void {
-    const newName = window.prompt("New name:", preset.name);
-    if (newName && newName !== preset.name) {
-      this.mgr.rename(preset.id, newName).then(() => this.display());
-    }
   }
 }
