@@ -8,6 +8,7 @@ export class HeaderUI {
 
   static injectAll(app: App, presetManager: PresetManager): void {
     HeaderUI.app = app;
+    (HeaderUI as any)._mgr = presetManager;
     requestAnimationFrame(() => {
       const leaves = app.workspace.getLeavesOfType("graph");
       leaves.forEach((leaf) => {
@@ -158,7 +159,7 @@ export class HeaderUI {
       opt.disabled = true; opt.selected = true;
       primaryBtn.textContent = "Save";
       newBtn.style.display = "none";
-      HeaderUI.updateTabTitle(mgr);
+      HeaderUI.updateTabTitle();
       return;
     }
 
@@ -171,20 +172,28 @@ export class HeaderUI {
       if (p.id === activeId) opt.selected = true;
     });
 
-    HeaderUI.updateTabTitle(mgr);
+    HeaderUI.updateTabTitle();
   }
 
-  static updateTabTitle(mgr: PresetManager): void {
+  static updateTabTitle(): void {
     const leaves = HeaderUI.app.workspace.getLeavesOfType("graph");
-    const activeId = mgr.activePresetId;
-    const activePreset = activeId ? mgr.list().find((p) => p.id === activeId) : null;
-    const title = activePreset ? `Graph: ${activePreset.name}` : "Graph view";
-
     leaves.forEach((leaf) => {
       const tabHeader = (leaf as any).tabHeaderEl as HTMLElement | null;
       if (!tabHeader) return;
       const titleEl = tabHeader.querySelector(".workspace-tab-header-inner-title");
-      if (titleEl) titleEl.textContent = title;
+      if (!titleEl) return;
+
+      // Find THIS leaf's panel and its selected preset
+      const container = leaf.view.containerEl as HTMLElement;
+      const select = container.querySelector(`#${PANEL_ID} select`) as HTMLSelectElement | null;
+      const selectedId = select?.value;
+      let title = "Graph view";
+      if (selectedId) {
+        // Need presetManager reference — use a stored static ref
+        const preset = (HeaderUI as any)._mgr?.list().find((p: any) => p.id === selectedId);
+        if (preset) title = `Graph: ${preset.name}`;
+      }
+      titleEl.textContent = title;
     });
   }
 }

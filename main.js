@@ -276,6 +276,7 @@ var PANEL_ID = "graph-presets-panel";
 var HeaderUI = class _HeaderUI {
   static injectAll(app, presetManager) {
     _HeaderUI.app = app;
+    _HeaderUI._mgr = presetManager;
     requestAnimationFrame(() => {
       const leaves = app.workspace.getLeavesOfType("graph");
       leaves.forEach((leaf) => {
@@ -407,7 +408,7 @@ var HeaderUI = class _HeaderUI {
       opt.selected = true;
       primaryBtn.textContent = "Save";
       newBtn.style.display = "none";
-      _HeaderUI.updateTabTitle(mgr);
+      _HeaderUI.updateTabTitle();
       return;
     }
     const hasActive = presets.some((p) => p.id === activeId);
@@ -418,20 +419,27 @@ var HeaderUI = class _HeaderUI {
       if (p.id === activeId)
         opt.selected = true;
     });
-    _HeaderUI.updateTabTitle(mgr);
+    _HeaderUI.updateTabTitle();
   }
-  static updateTabTitle(mgr) {
+  static updateTabTitle() {
     const leaves = _HeaderUI.app.workspace.getLeavesOfType("graph");
-    const activeId = mgr.activePresetId;
-    const activePreset = activeId ? mgr.list().find((p) => p.id === activeId) : null;
-    const title = activePreset ? `Graph: ${activePreset.name}` : "Graph view";
     leaves.forEach((leaf) => {
       const tabHeader = leaf.tabHeaderEl;
       if (!tabHeader)
         return;
       const titleEl = tabHeader.querySelector(".workspace-tab-header-inner-title");
-      if (titleEl)
-        titleEl.textContent = title;
+      if (!titleEl)
+        return;
+      const container = leaf.view.containerEl;
+      const select = container.querySelector(`#${PANEL_ID} select`);
+      const selectedId = select?.value;
+      let title = "Graph view";
+      if (selectedId) {
+        const preset = _HeaderUI._mgr?.list().find((p) => p.id === selectedId);
+        if (preset)
+          title = `Graph: ${preset.name}`;
+      }
+      titleEl.textContent = title;
     });
   }
 };
