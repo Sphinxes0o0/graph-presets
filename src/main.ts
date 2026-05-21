@@ -2,6 +2,7 @@ import { Plugin } from "obsidian";
 import { GraphPresetsSettings, DEFAULT_SETTINGS } from "./types";
 import { PresetManager } from "./preset-manager";
 import { GraphPresetsSettingTab } from "./settings-tab";
+import { HeaderUI } from "./header-ui";
 
 export default class GraphPresetsPlugin extends Plugin {
   settings!: GraphPresetsSettings;
@@ -39,12 +40,15 @@ export default class GraphPresetsPlugin extends Plugin {
     // Settings tab
     this.addSettingTab(new GraphPresetsSettingTab(this.app, this.presetManager, this));
 
-    // Auto-restore on Graph View open
+    // Auto-restore on Graph View open + inject header UI
     this.registerEvent(
       this.app.workspace.on("layout-change", () => {
         const leaves = this.app.workspace.getLeavesOfType("graph");
-        if (leaves.length > 0 && this.settings.restoreOnStartup) {
-          setTimeout(() => this.presetManager.restoreLastActive(), 500);
+        if (leaves.length > 0) {
+          HeaderUI.inject(this.app, this.presetManager);
+          if (this.settings.restoreOnStartup) {
+            setTimeout(() => this.presetManager.restoreLastActive(), 500);
+          }
         }
       })
     );

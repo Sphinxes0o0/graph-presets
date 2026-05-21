@@ -9,7 +9,7 @@ source: https://github.com/Sphinxes0o0/obsidian-persistent-graph
 
 const prod = process.argv[2] === "production";
 
-esbuild.build({
+const buildOptions = {
   banner: { js: banner },
   entryPoints: ["src/main.ts"],
   bundle: true,
@@ -20,5 +20,10 @@ esbuild.build({
   sourcemap: prod ? false : "inline",
   treeShaking: true,
   outfile: "main.js",
-  watch: !prod,
-}).catch(() => process.exit(1));
+};
+
+if (!prod) {
+  buildOptions.watch = true;
+}
+
+esbuild.build(buildOptions).catch(() => process.exit(1));

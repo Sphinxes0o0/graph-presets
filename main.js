@@ -23,7 +23,7 @@ __export(main_exports, {
   default: () => GraphPresetsPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // src/types.ts
 var DEFAULT_SETTINGS = {
@@ -270,8 +270,85 @@ var GraphPresetsSettingTab = class extends import_obsidian3.PluginSettingTab {
   }
 };
 
+// src/header-ui.ts
+var import_obsidian4 = require("obsidian");
+var INJECTED_ATTR = "data-graph-presets-injected";
+var HeaderUI = class _HeaderUI {
+  static inject(_app, presetManager) {
+    requestAnimationFrame(() => {
+      const controls = document.querySelector(".graph-controls");
+      if (!controls)
+        return;
+      if (controls.hasAttribute(INJECTED_ATTR))
+        return;
+      controls.setAttribute(INJECTED_ATTR, "true");
+      const row = controls.createEl("div", {
+        cls: "graph-presets-header-row"
+      });
+      row.style.display = "flex";
+      row.style.alignItems = "center";
+      row.style.gap = "6px";
+      const select = row.createEl("select", {
+        cls: "graph-presets-select dropdown"
+      });
+      select.style.maxWidth = "200px";
+      const saveBtn = row.createEl("button", {
+        text: "Save",
+        cls: "graph-presets-save-btn"
+      });
+      saveBtn.style.fontSize = "12px";
+      select.addEventListener("change", async () => {
+        const id = select.value;
+        if (!id)
+          return;
+        try {
+          await presetManager.activate(id);
+          _HeaderUI.refreshDropdown(select, presetManager);
+        } catch (e) {
+          new import_obsidian4.Notice(e.message);
+        }
+      });
+      saveBtn.addEventListener("click", async () => {
+        const name = window.prompt("Preset name:");
+        if (!name)
+          return;
+        try {
+          await presetManager.saveCurrent(name);
+          _HeaderUI.refreshDropdown(select, presetManager);
+        } catch (e) {
+          new import_obsidian4.Notice(e.message);
+        }
+      });
+      _HeaderUI.refreshDropdown(select, presetManager);
+    });
+  }
+  static refreshDropdown(select, mgr) {
+    const presets = mgr.list();
+    const activeId = mgr.activePresetId;
+    select.innerHTML = "";
+    if (presets.length === 0) {
+      const opt = select.createEl("option", { value: "", text: "No presets" });
+      opt.disabled = true;
+      opt.selected = true;
+      select.disabled = true;
+      return;
+    }
+    select.disabled = false;
+    presets.forEach((p) => {
+      const filterPreview = p.options.search ? `"${p.options.search}"` : "(all)";
+      const opt = select.createEl("option", {
+        value: p.id,
+        text: `${p.name} \u2014 ${filterPreview}`
+      });
+      if (p.id === activeId) {
+        opt.selected = true;
+      }
+    });
+  }
+};
+
 // src/main.ts
-var GraphPresetsPlugin = class extends import_obsidian4.Plugin {
+var GraphPresetsPlugin = class extends import_obsidian5.Plugin {
   async onload() {
     await this.loadSettings();
     this.presetManager = new PresetManager(
@@ -300,8 +377,11 @@ var GraphPresetsPlugin = class extends import_obsidian4.Plugin {
     this.registerEvent(
       this.app.workspace.on("layout-change", () => {
         const leaves = this.app.workspace.getLeavesOfType("graph");
-        if (leaves.length > 0 && this.settings.restoreOnStartup) {
-          setTimeout(() => this.presetManager.restoreLastActive(), 500);
+        if (leaves.length > 0) {
+          HeaderUI.inject(this.app, this.presetManager);
+          if (this.settings.restoreOnStartup) {
+            setTimeout(() => this.presetManager.restoreLastActive(), 500);
+          }
         }
       })
     );
