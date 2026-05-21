@@ -1,16 +1,14 @@
 {
   "name": "graph-presets",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Obsidian plugin: save & switch named Graph View presets",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-    "lint": "eslint src/"
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
   },
   "devDependencies": {
     "@types/node": "^20",
-    "builtin-modules": "^5.2.0",
     "esbuild": "^0.19",
     "obsidian": "latest",
     "tslib": "^2.6",
