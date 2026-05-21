@@ -16,7 +16,7 @@ Save and switch named Graph View presets in [Obsidian](https://obsidian.md/) —
 
 ## Screenshot
 
-> (add a screenshot/GIF here)
+![Graph Presets panel in Obsidian Graph View](assets/screenshot.png)
 
 ## Installation
 
