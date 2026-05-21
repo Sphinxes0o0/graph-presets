@@ -20,7 +20,7 @@ Save and switch named Graph View presets in [Obsidian](https://obsidian.md/) —
 
 ## Installation
 
-### Community Plugins (coming soon)
+### Community Plugins
 
 Once accepted to the Obsidian Community Plugin list, install via Settings → Community Plugins → Browse → "Graph Presets".
 
