@@ -4,12 +4,18 @@ import { PresetManager } from "./preset-manager";
 const PANEL_ID = "graph-presets-panel";
 
 export class HeaderUI {
-  static inject(app: App, presetManager: PresetManager): void {
+  static injectAll(app: App, presetManager: PresetManager): void {
     requestAnimationFrame(() => {
-      const leaf = app.workspace.getLeavesOfType("graph")[0];
-      if (!leaf) return;
-      const graphContainer = leaf.view.containerEl as HTMLElement;
-      if (!graphContainer || document.getElementById(PANEL_ID)) return;
+      const leaves = app.workspace.getLeavesOfType("graph");
+      leaves.forEach((leaf) => {
+        const container = leaf.view.containerEl as HTMLElement;
+        if (!container || container.querySelector(`#${PANEL_ID}`)) return;
+        HeaderUI.injectOne(container, presetManager);
+      });
+    });
+  }
+
+  private static injectOne(graphContainer: HTMLElement, presetManager: PresetManager): void {
 
       const panel = document.createElement("div");
       panel.id = PANEL_ID;
@@ -90,7 +96,6 @@ export class HeaderUI {
           HeaderUI.refresh(select, primaryBtn, newBtn, presetManager);
         }
       });
-    });
   }
 
   /** Show inline name input, then save as new preset */

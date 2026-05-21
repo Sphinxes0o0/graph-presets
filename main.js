@@ -274,86 +274,89 @@ var GraphPresetsSettingTab = class extends import_obsidian3.PluginSettingTab {
 var import_obsidian4 = require("obsidian");
 var PANEL_ID = "graph-presets-panel";
 var HeaderUI = class _HeaderUI {
-  static inject(app, presetManager) {
+  static injectAll(app, presetManager) {
     requestAnimationFrame(() => {
-      const leaf = app.workspace.getLeavesOfType("graph")[0];
-      if (!leaf)
-        return;
-      const graphContainer = leaf.view.containerEl;
-      if (!graphContainer || document.getElementById(PANEL_ID))
-        return;
-      const panel = document.createElement("div");
-      panel.id = PANEL_ID;
-      panel.style.cssText = `
+      const leaves = app.workspace.getLeavesOfType("graph");
+      leaves.forEach((leaf) => {
+        const container = leaf.view.containerEl;
+        if (!container || container.querySelector(`#${PANEL_ID}`))
+          return;
+        _HeaderUI.injectOne(container, presetManager);
+      });
+    });
+  }
+  static injectOne(graphContainer, presetManager) {
+    const panel = document.createElement("div");
+    panel.id = PANEL_ID;
+    panel.style.cssText = `
         position:absolute; bottom:12px; left:12px; z-index:10;
         background:var(--background-primary); border:1px solid var(--background-modifier-border);
         border-radius:8px; padding:6px 8px; font-size:12px;
         box-shadow:0 2px 8px rgba(0,0,0,0.15); min-width:200px;
       `;
-      graphContainer.appendChild(panel);
-      const toggleBtn = panel.createEl("button", {
-        text: "\u{1F4C1} Presets",
-        cls: "graph-presets-toggle"
-      });
-      toggleBtn.style.cssText = "font-size:12px;width:100%;cursor:pointer;";
-      const body = panel.createEl("div", { cls: "graph-presets-body" });
-      body.style.display = "none";
-      const select = body.createEl("select", { cls: "dropdown" });
-      select.style.cssText = "width:100%;margin-bottom:4px;";
-      const btnRow = body.createEl("div");
-      btnRow.style.cssText = "display:flex;gap:3px;";
-      const primaryBtn = btnRow.createEl("button");
-      primaryBtn.style.cssText = "font-size:11px;flex:1;";
-      const newBtn = btnRow.createEl("button", { text: "+" });
-      newBtn.style.cssText = "font-size:11px;flex:0 0 24px;";
-      const delBtn = btnRow.createEl("button", { text: "\u{1F5D1}" });
-      delBtn.style.cssText = "font-size:11px;flex:0 0 28px;color:var(--text-error);";
-      let expanded = false;
-      toggleBtn.addEventListener("click", () => {
-        expanded = !expanded;
-        body.style.display = expanded ? "block" : "none";
-        toggleBtn.textContent = expanded ? "\u{1F4C1} Presets \u25B2" : "\u{1F4C1} Presets";
-        if (expanded)
+    graphContainer.appendChild(panel);
+    const toggleBtn = panel.createEl("button", {
+      text: "\u{1F4C1} Presets",
+      cls: "graph-presets-toggle"
+    });
+    toggleBtn.style.cssText = "font-size:12px;width:100%;cursor:pointer;";
+    const body = panel.createEl("div", { cls: "graph-presets-body" });
+    body.style.display = "none";
+    const select = body.createEl("select", { cls: "dropdown" });
+    select.style.cssText = "width:100%;margin-bottom:4px;";
+    const btnRow = body.createEl("div");
+    btnRow.style.cssText = "display:flex;gap:3px;";
+    const primaryBtn = btnRow.createEl("button");
+    primaryBtn.style.cssText = "font-size:11px;flex:1;";
+    const newBtn = btnRow.createEl("button", { text: "+" });
+    newBtn.style.cssText = "font-size:11px;flex:0 0 24px;";
+    const delBtn = btnRow.createEl("button", { text: "\u{1F5D1}" });
+    delBtn.style.cssText = "font-size:11px;flex:0 0 28px;color:var(--text-error);";
+    let expanded = false;
+    toggleBtn.addEventListener("click", () => {
+      expanded = !expanded;
+      body.style.display = expanded ? "block" : "none";
+      toggleBtn.textContent = expanded ? "\u{1F4C1} Presets \u25B2" : "\u{1F4C1} Presets";
+      if (expanded)
+        _HeaderUI.refresh(select, primaryBtn, newBtn, presetManager);
+    });
+    select.addEventListener("change", async () => {
+      const id = select.value;
+      if (!id)
+        return;
+      try {
+        await presetManager.activate(id);
+        _HeaderUI.refresh(select, primaryBtn, newBtn, presetManager);
+      } catch (e) {
+        new import_obsidian4.Notice(e.message);
+      }
+    });
+    primaryBtn.addEventListener("click", () => {
+      const activeId = presetManager.activePresetId;
+      if (activeId) {
+        presetManager.updateCurrent(activeId).then(() => {
           _HeaderUI.refresh(select, primaryBtn, newBtn, presetManager);
-      });
-      select.addEventListener("change", async () => {
-        const id = select.value;
-        if (!id)
-          return;
-        try {
-          await presetManager.activate(id);
-          _HeaderUI.refresh(select, primaryBtn, newBtn, presetManager);
-        } catch (e) {
-          new import_obsidian4.Notice(e.message);
-        }
-      });
-      primaryBtn.addEventListener("click", () => {
-        const activeId = presetManager.activePresetId;
-        if (activeId) {
-          presetManager.updateCurrent(activeId).then(() => {
-            _HeaderUI.refresh(select, primaryBtn, newBtn, presetManager);
-          }).catch((e) => new import_obsidian4.Notice(e.message));
-        } else {
-          _HeaderUI.promptSave(body, select, primaryBtn, newBtn, delBtn, presetManager);
-        }
-      });
-      newBtn.addEventListener("click", () => {
+        }).catch((e) => new import_obsidian4.Notice(e.message));
+      } else {
         _HeaderUI.promptSave(body, select, primaryBtn, newBtn, delBtn, presetManager);
-      });
-      delBtn.addEventListener("click", async () => {
-        const id = select.value;
-        if (!id) {
-          new import_obsidian4.Notice("No preset selected");
-          return;
-        }
-        const p = presetManager.list().find((p2) => p2.id === id);
-        if (!p)
-          return;
-        if (confirm(`Delete "${p.name}"?`)) {
-          await presetManager.delete(id);
-          _HeaderUI.refresh(select, primaryBtn, newBtn, presetManager);
-        }
-      });
+      }
+    });
+    newBtn.addEventListener("click", () => {
+      _HeaderUI.promptSave(body, select, primaryBtn, newBtn, delBtn, presetManager);
+    });
+    delBtn.addEventListener("click", async () => {
+      const id = select.value;
+      if (!id) {
+        new import_obsidian4.Notice("No preset selected");
+        return;
+      }
+      const p = presetManager.list().find((p2) => p2.id === id);
+      if (!p)
+        return;
+      if (confirm(`Delete "${p.name}"?`)) {
+        await presetManager.delete(id);
+        _HeaderUI.refresh(select, primaryBtn, newBtn, presetManager);
+      }
     });
   }
   /** Show inline name input, then save as new preset */
@@ -447,7 +450,7 @@ var GraphPresetsPlugin = class extends import_obsidian5.Plugin {
       this.app.workspace.on("layout-change", () => {
         const leaves = this.app.workspace.getLeavesOfType("graph");
         if (leaves.length > 0) {
-          HeaderUI.inject(this.app, this.presetManager);
+          HeaderUI.injectAll(this.app, this.presetManager);
           if (this.settings.restoreOnStartup) {
             setTimeout(() => this.presetManager.restoreLastActive(), 500);
           }

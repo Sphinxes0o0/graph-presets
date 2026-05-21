@@ -45,7 +45,7 @@ export default class GraphPresetsPlugin extends Plugin {
       this.app.workspace.on("layout-change", () => {
         const leaves = this.app.workspace.getLeavesOfType("graph");
         if (leaves.length > 0) {
-          HeaderUI.inject(this.app, this.presetManager);
+          HeaderUI.injectAll(this.app, this.presetManager);
           if (this.settings.restoreOnStartup) {
             setTimeout(() => this.presetManager.restoreLastActive(), 500);
           }
