@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-persistent-graph",
+  "name": "graph-presets",
   "version": "0.7.0",
   "description": "Obsidian plugin: save & switch named Graph View presets",
   "main": "main.js",
