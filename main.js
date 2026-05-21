@@ -275,6 +275,7 @@ var import_obsidian4 = require("obsidian");
 var PANEL_ID = "graph-presets-panel";
 var HeaderUI = class _HeaderUI {
   static injectAll(app, presetManager) {
+    _HeaderUI.app = app;
     requestAnimationFrame(() => {
       const leaves = app.workspace.getLeavesOfType("graph");
       leaves.forEach((leaf) => {
@@ -406,6 +407,7 @@ var HeaderUI = class _HeaderUI {
       opt.selected = true;
       primaryBtn.textContent = "Save";
       newBtn.style.display = "none";
+      _HeaderUI.updateTabTitle(mgr);
       return;
     }
     const hasActive = presets.some((p) => p.id === activeId);
@@ -415,6 +417,21 @@ var HeaderUI = class _HeaderUI {
       const opt = select.createEl("option", { value: p.id, text: p.name });
       if (p.id === activeId)
         opt.selected = true;
+    });
+    _HeaderUI.updateTabTitle(mgr);
+  }
+  static updateTabTitle(mgr) {
+    const leaves = _HeaderUI.app.workspace.getLeavesOfType("graph");
+    const activeId = mgr.activePresetId;
+    const activePreset = activeId ? mgr.list().find((p) => p.id === activeId) : null;
+    const title = activePreset ? `Graph: ${activePreset.name}` : "Graph view";
+    leaves.forEach((leaf) => {
+      const tabHeader = leaf.tabHeaderEl;
+      if (!tabHeader)
+        return;
+      const titleEl = tabHeader.querySelector(".workspace-tab-header-inner-title");
+      if (titleEl)
+        titleEl.textContent = title;
     });
   }
 };
@@ -451,8 +468,12 @@ var GraphPresetsPlugin = class extends import_obsidian5.Plugin {
         const leaves = this.app.workspace.getLeavesOfType("graph");
         if (leaves.length > 0) {
           HeaderUI.injectAll(this.app, this.presetManager);
+          HeaderUI.updateTabTitle(this.presetManager);
           if (this.settings.restoreOnStartup) {
-            setTimeout(() => this.presetManager.restoreLastActive(), 500);
+            setTimeout(() => {
+              this.presetManager.restoreLastActive();
+              HeaderUI.updateTabTitle(this.presetManager);
+            }, 500);
           }
         }
       })

@@ -4,7 +4,10 @@ import { PresetManager } from "./preset-manager";
 const PANEL_ID = "graph-presets-panel";
 
 export class HeaderUI {
+  private static app: App;
+
   static injectAll(app: App, presetManager: PresetManager): void {
+    HeaderUI.app = app;
     requestAnimationFrame(() => {
       const leaves = app.workspace.getLeavesOfType("graph");
       leaves.forEach((leaf) => {
@@ -155,6 +158,7 @@ export class HeaderUI {
       opt.disabled = true; opt.selected = true;
       primaryBtn.textContent = "Save";
       newBtn.style.display = "none";
+      HeaderUI.updateTabTitle(mgr);
       return;
     }
 
@@ -165,6 +169,22 @@ export class HeaderUI {
     presets.forEach((p) => {
       const opt = select.createEl("option", { value: p.id, text: p.name });
       if (p.id === activeId) opt.selected = true;
+    });
+
+    HeaderUI.updateTabTitle(mgr);
+  }
+
+  static updateTabTitle(mgr: PresetManager): void {
+    const leaves = HeaderUI.app.workspace.getLeavesOfType("graph");
+    const activeId = mgr.activePresetId;
+    const activePreset = activeId ? mgr.list().find((p) => p.id === activeId) : null;
+    const title = activePreset ? `Graph: ${activePreset.name}` : "Graph view";
+
+    leaves.forEach((leaf) => {
+      const tabHeader = (leaf as any).tabHeaderEl as HTMLElement | null;
+      if (!tabHeader) return;
+      const titleEl = tabHeader.querySelector(".workspace-tab-header-inner-title");
+      if (titleEl) titleEl.textContent = title;
     });
   }
 }
