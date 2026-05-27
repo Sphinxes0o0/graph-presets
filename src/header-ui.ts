@@ -1,5 +1,6 @@
 import { App, Notice } from "obsidian";
 import { PresetManager } from "./preset-manager";
+import { ConfirmModal } from "./modals";
 
 const PANEL_ID = "graph-presets-panel";
 
@@ -90,15 +91,15 @@ export class HeaderUI {
       });
 
       // --- Delete ---
-      delBtn.addEventListener("click", async () => {
+      delBtn.addEventListener("click", () => {
         const id = (select as HTMLSelectElement).value;
         if (!id) { new Notice("No preset selected"); return; }
         const p = presetManager.list().find((p) => p.id === id);
         if (!p) return;
-        if (confirm(`Delete "${p.name}"?`)) {
+        new ConfirmModal(HeaderUI.app, `Delete "${p.name}"?`, async () => {
           await presetManager.delete(id);
           HeaderUI.refresh(select, primaryBtn, newBtn, presetManager);
-        }
+        }).open();
       });
   }
 
