@@ -46,11 +46,11 @@ export default class GraphPresetsPlugin extends Plugin {
         const leaves = this.app.workspace.getLeavesOfType("graph");
         if (leaves.length > 0) {
           HeaderUI.injectAll(this.app, this.presetManager);
-          HeaderUI.updateTabTitle(this.presetManager);
+          HeaderUI.updateTabTitle();
           if (this.settings.restoreOnStartup) {
             setTimeout(() => {
               this.presetManager.restoreLastActive();
-              HeaderUI.updateTabTitle(this.presetManager);
+              HeaderUI.updateTabTitle();
             }, 500);
           }
         }

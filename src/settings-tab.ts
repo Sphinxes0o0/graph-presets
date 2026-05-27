@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import { PresetManager } from "./preset-manager";
 import { Preset, GraphPresetsSettings } from "./types";
+import { RenameModal, ConfirmModal } from "./modals";
 
 interface PluginLike {
   settings: GraphPresetsSettings;
@@ -46,17 +47,21 @@ export class GraphPresetsSettingTab extends PluginSettingTab {
       .setDesc(`Filter: ${filter} · ${colors} color groups · ${preset.updatedAt.slice(0, 10)}`)
       .addExtraButton((btn) =>
         btn.setIcon("pencil").setTooltip("Rename").onClick(() => {
-          const newName = window.prompt("New name:", preset.name);
-          if (newName && newName !== preset.name) {
-            this.mgr.rename(preset.id, newName).then(() => this.display());
-          }
+          new RenameModal(this.app, preset.name, (newName) => {
+            if (newName && newName !== preset.name) {
+              this.mgr.rename(preset.id, newName).then(() => this.display());
+            }
+          }).open();
         })
       )
       .addExtraButton((btn) =>
-        btn.setIcon("trash").setTooltip("Delete").onClick(async () => {
-          await this.mgr.delete(preset.id);
-          this.display();
+        btn.setIcon("trash").setTooltip("Delete").onClick(() => {
+          new ConfirmModal(this.app, `Are you sure you want to delete "${preset.name}"?`, async () => {
+            await this.mgr.delete(preset.id);
+            this.display();
+          }).open();
         })
       );
   }
 }
+
