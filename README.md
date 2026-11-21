@@ -2,7 +2,7 @@
 
 Save and switch named Graph View presets in [Obsidian](https://obsidian.md/) — filters, color groups, and node positions. Presets are stored in `data.json`, syncable via git across devices.
 
-![](https://img.shields.io/badge/version-0.7.0-blue) ![](https://img.shields.io/badge/minApp-1.5.0-green)
+![](https://img.shields.io/badge/version-0.7.5-blue) ![](https://img.shields.io/badge/minApp-1.5.0-green)
 
 ## Features
 

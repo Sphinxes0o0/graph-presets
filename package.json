@@ -1,6 +1,6 @@
 {
   "name": "graph-presets",
-  "version": "0.7.1",
+  "version": "0.7.5",
   "description": "Obsidian plugin: save & switch named Graph View presets",
   "main": "main.js",
   "scripts": {
