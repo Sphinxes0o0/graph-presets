@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, ButtonComponent, Notice, PluginSettingTab, Setting } from "obsidian";
 import { PresetManager } from "./preset-manager";
 import { Preset, GraphPresetsSettings } from "./types";
 
@@ -41,22 +41,71 @@ export class GraphPresetsSettingTab extends PluginSettingTab {
   private renderRow(containerEl: HTMLElement, preset: Preset): void {
     const filter = preset.options.search || "(all)";
     const colors = preset.options.colorGroups?.length ?? 0;
-    new Setting(containerEl)
+    const row = new Setting(containerEl)
       .setName(preset.name)
-      .setDesc(`Filter: ${filter} · ${colors} color groups · ${preset.updatedAt.slice(0, 10)}`)
+      .setDesc(`Filter: ${filter} · ${colors} color groups · ${preset.updatedAt.slice(0, 10)}`);
+
+    row
       .addExtraButton((btn) =>
-        btn.setIcon("pencil").setTooltip("Rename").onClick(() => {
-          const newName = window.prompt("New name:", preset.name);
-          if (newName && newName !== preset.name) {
-            this.mgr.rename(preset.id, newName).then(() => this.display());
-          }
-        })
+        btn.setIcon("pencil").setTooltip("Rename").onClick(() => this.editName(row, preset))
       )
       .addExtraButton((btn) =>
-        btn.setIcon("trash").setTooltip("Delete").onClick(async () => {
-          await this.mgr.delete(preset.id);
-          this.display();
-        })
+        btn.setIcon("trash").setTooltip("Delete").onClick(() => this.confirmDelete(row, preset))
       );
+  }
+
+  private editName(row: Setting, preset: Preset): void {
+    const form = row.clear().controlEl.createEl("form", { cls: "setting-item-control" });
+    const input = form.createEl("input", {
+      type: "text",
+      value: preset.name,
+      attr: { "aria-label": "New name", required: true },
+    });
+    const cancel = new ButtonComponent(form).setButtonText("Cancel").onClick(() => this.display());
+    cancel.buttonEl.type = "button";
+    const submit = new ButtonComponent(form).setButtonText("Rename").setCta();
+    submit.buttonEl.type = "submit";
+    submit.setDisabled(!input.value.trim());
+
+    input.addEventListener("input", () => submit.setDisabled(!input.value.trim()));
+    input.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || event.isComposing) return;
+      event.preventDefault();
+      event.stopPropagation();
+      this.display();
+    });
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const name = input.value.trim();
+      if (!name) return;
+      if (name === preset.name) {
+        this.display();
+        return;
+      }
+      input.disabled = true;
+      cancel.setDisabled(true);
+      submit.setDisabled(true);
+      void this.changePreset(() => this.mgr.rename(preset.id, name));
+    });
+    input.focus();
+    input.select();
+  }
+
+  private confirmDelete(row: Setting, preset: Preset): void {
+    row.clear().setDesc(`Delete "${preset.name}"?`)
+      .addButton((btn) => btn.setButtonText("Cancel").onClick(() => this.display()))
+      .addButton((btn) => btn.setButtonText("Delete").setWarning().onClick(() => {
+        row.setDisabled(true);
+        return this.changePreset(() => this.mgr.delete(preset.id));
+      }));
+  }
+
+  private async changePreset(change: () => Promise<void>): Promise<void> {
+    try {
+      await change();
+    } catch (error) {
+      new Notice(error instanceof Error ? error.message : String(error));
+    }
+    this.display();
   }
 }

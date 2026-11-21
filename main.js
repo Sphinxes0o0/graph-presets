@@ -225,19 +225,63 @@ var GraphPresetsSettingTab = class extends import_obsidian3.PluginSettingTab {
   renderRow(containerEl, preset) {
     const filter = preset.options.search || "(all)";
     const colors = preset.options.colorGroups?.length ?? 0;
-    new import_obsidian3.Setting(containerEl).setName(preset.name).setDesc(`Filter: ${filter} \xB7 ${colors} color groups \xB7 ${preset.updatedAt.slice(0, 10)}`).addExtraButton(
-      (btn) => btn.setIcon("pencil").setTooltip("Rename").onClick(() => {
-        const newName = window.prompt("New name:", preset.name);
-        if (newName && newName !== preset.name) {
-          this.mgr.rename(preset.id, newName).then(() => this.display());
-        }
-      })
+    const row = new import_obsidian3.Setting(containerEl).setName(preset.name).setDesc(`Filter: ${filter} \xB7 ${colors} color groups \xB7 ${preset.updatedAt.slice(0, 10)}`);
+    row.addExtraButton(
+      (btn) => btn.setIcon("pencil").setTooltip("Rename").onClick(() => this.editName(row, preset))
     ).addExtraButton(
-      (btn) => btn.setIcon("trash").setTooltip("Delete").onClick(async () => {
-        await this.mgr.delete(preset.id);
-        this.display();
-      })
+      (btn) => btn.setIcon("trash").setTooltip("Delete").onClick(() => this.confirmDelete(row, preset))
     );
+  }
+  editName(row, preset) {
+    const form = row.clear().controlEl.createEl("form", { cls: "setting-item-control" });
+    const input = form.createEl("input", {
+      type: "text",
+      value: preset.name,
+      attr: { "aria-label": "New name", required: true }
+    });
+    const cancel = new import_obsidian3.ButtonComponent(form).setButtonText("Cancel").onClick(() => this.display());
+    cancel.buttonEl.type = "button";
+    const submit = new import_obsidian3.ButtonComponent(form).setButtonText("Rename").setCta();
+    submit.buttonEl.type = "submit";
+    submit.setDisabled(!input.value.trim());
+    input.addEventListener("input", () => submit.setDisabled(!input.value.trim()));
+    input.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || event.isComposing)
+        return;
+      event.preventDefault();
+      event.stopPropagation();
+      this.display();
+    });
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const name = input.value.trim();
+      if (!name)
+        return;
+      if (name === preset.name) {
+        this.display();
+        return;
+      }
+      input.disabled = true;
+      cancel.setDisabled(true);
+      submit.setDisabled(true);
+      void this.changePreset(() => this.mgr.rename(preset.id, name));
+    });
+    input.focus();
+    input.select();
+  }
+  confirmDelete(row, preset) {
+    row.clear().setDesc(`Delete "${preset.name}"?`).addButton((btn) => btn.setButtonText("Cancel").onClick(() => this.display())).addButton((btn) => btn.setButtonText("Delete").setWarning().onClick(() => {
+      row.setDisabled(true);
+      return this.changePreset(() => this.mgr.delete(preset.id));
+    }));
+  }
+  async changePreset(change) {
+    try {
+      await change();
+    } catch (error) {
+      new import_obsidian3.Notice(error instanceof Error ? error.message : String(error));
+    }
+    this.display();
   }
 };
 
@@ -254,11 +298,11 @@ var HeaderUI = class _HeaderUI {
         const container = leaf.view.containerEl;
         if (!container || container.querySelector(`#${PANEL_ID}`))
           return;
-        _HeaderUI.injectOne(container, presetManager);
+        _HeaderUI.injectOne(app, container, presetManager);
       });
     });
   }
-  static injectOne(graphContainer, presetManager) {
+  static injectOne(app, graphContainer, presetManager) {
     const panel = document.createElement("div");
     panel.id = PANEL_ID;
     panel.style.cssText = `
@@ -317,19 +361,29 @@ var HeaderUI = class _HeaderUI {
     newBtn.addEventListener("click", () => {
       _HeaderUI.promptSave(body, select, primaryBtn, newBtn, delBtn, presetManager);
     });
-    delBtn.addEventListener("click", async () => {
+    delBtn.addEventListener("click", () => {
       const id = select.value;
       if (!id) {
         new import_obsidian4.Notice("No preset selected");
         return;
       }
-      const p = presetManager.list().find((p2) => p2.id === id);
-      if (!p)
+      const preset = presetManager.get(id);
+      if (!preset)
         return;
-      if (confirm(`Delete "${p.name}"?`)) {
-        await presetManager.delete(id);
-        _HeaderUI.refresh(select, primaryBtn, newBtn, presetManager);
-      }
+      const modal = new import_obsidian4.Modal(app);
+      modal.titleEl.setText("Delete preset?");
+      modal.contentEl.createEl("p", { text: `Delete "${preset.name}"?` });
+      new import_obsidian4.Setting(modal.contentEl).addButton((btn) => btn.setButtonText("Cancel").onClick(() => modal.close())).addButton((btn) => btn.setButtonText("Delete").setWarning().onClick(async () => {
+        btn.setDisabled(true);
+        modal.close();
+        try {
+          await presetManager.delete(id);
+          _HeaderUI.refresh(select, primaryBtn, newBtn, presetManager);
+        } catch (error) {
+          new import_obsidian4.Notice(error instanceof Error ? error.message : String(error));
+        }
+      }));
+      modal.open();
     });
   }
   /** Show inline name input, then save as new preset */
@@ -447,11 +501,11 @@ var GraphPresetsPlugin = class extends import_obsidian5.Plugin {
         const leaves = this.app.workspace.getLeavesOfType("graph");
         if (leaves.length > 0) {
           HeaderUI.injectAll(this.app, this.presetManager);
-          HeaderUI.updateTabTitle(this.presetManager);
+          HeaderUI.updateTabTitle();
           if (this.settings.restoreOnStartup) {
             setTimeout(() => {
               this.presetManager.restoreLastActive();
-              HeaderUI.updateTabTitle(this.presetManager);
+              HeaderUI.updateTabTitle();
             }, 500);
           }
         }

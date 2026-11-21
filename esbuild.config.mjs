@@ -3,7 +3,7 @@ import process from "process";
 
 const prod = process.argv[2] === "production";
 
-esbuild.build({
+const buildOptions = {
   entryPoints: ["src/main.ts"],
   bundle: true,
   external: ["obsidian", "electron"],
@@ -13,5 +13,11 @@ esbuild.build({
   sourcemap: prod ? false : "inline",
   treeShaking: true,
   outfile: "main.js",
-  watch: !prod,
-}).catch(() => process.exit(1));
+};
+
+if (prod) {
+  await esbuild.build(buildOptions);
+} else {
+  const context = await esbuild.context(buildOptions);
+  await context.watch();
+}

@@ -1,4 +1,4 @@
-import { App, Notice } from "obsidian";
+import { App, Modal, Notice, Setting } from "obsidian";
 import { PresetManager } from "./preset-manager";
 
 const PANEL_ID = "graph-presets-panel";
@@ -14,12 +14,12 @@ export class HeaderUI {
       leaves.forEach((leaf) => {
         const container = leaf.view.containerEl as HTMLElement;
         if (!container || container.querySelector(`#${PANEL_ID}`)) return;
-        HeaderUI.injectOne(container, presetManager);
+        HeaderUI.injectOne(app, container, presetManager);
       });
     });
   }
 
-  private static injectOne(graphContainer: HTMLElement, presetManager: PresetManager): void {
+  private static injectOne(app: App, graphContainer: HTMLElement, presetManager: PresetManager): void {
 
       const panel = document.createElement("div");
       panel.id = PANEL_ID;
@@ -90,15 +90,27 @@ export class HeaderUI {
       });
 
       // --- Delete ---
-      delBtn.addEventListener("click", async () => {
+      delBtn.addEventListener("click", () => {
         const id = (select as HTMLSelectElement).value;
         if (!id) { new Notice("No preset selected"); return; }
-        const p = presetManager.list().find((p) => p.id === id);
-        if (!p) return;
-        if (confirm(`Delete "${p.name}"?`)) {
-          await presetManager.delete(id);
-          HeaderUI.refresh(select, primaryBtn, newBtn, presetManager);
-        }
+        const preset = presetManager.get(id);
+        if (!preset) return;
+        const modal = new Modal(app);
+        modal.titleEl.setText("Delete preset?");
+        modal.contentEl.createEl("p", { text: `Delete "${preset.name}"?` });
+        new Setting(modal.contentEl)
+          .addButton((btn) => btn.setButtonText("Cancel").onClick(() => modal.close()))
+          .addButton((btn) => btn.setButtonText("Delete").setWarning().onClick(async () => {
+            btn.setDisabled(true);
+            modal.close();
+            try {
+              await presetManager.delete(id);
+              HeaderUI.refresh(select, primaryBtn, newBtn, presetManager);
+            } catch (error) {
+              new Notice(error instanceof Error ? error.message : String(error));
+            }
+          }));
+        modal.open();
       });
   }
 
